@@ -47,5 +47,8 @@ library(car)
 #change the name of mjolkfalla to the same spelling throughout dfnew using library car
 dfmilk <- mutate(dfnew, PreviousArea =  recode(PreviousArea, "'Mjölkfålla' = 'Mjolkfalla'"))
 
+
 unique (dfmilk$PreviousArea)
+
+
 
