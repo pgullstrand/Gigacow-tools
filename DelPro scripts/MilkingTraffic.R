@@ -21,3 +21,4 @@ Area.list = DF.trafficMilkings %>%
   summarise(N = length(PreviousArea), .groups = 'drop')
 
 #write.csv(head(DF.trafficMilkings), file = "TrafficData")
+#
