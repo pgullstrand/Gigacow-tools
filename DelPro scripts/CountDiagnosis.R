@@ -38,3 +38,4 @@ TreatmentList_Con = con %>% tbl(in_catalog("Gigacow_QA", "science", "Health_Diag
   group_by(FarmName_Pseudo, DiagnosisName) %>%
   count(FarmName_Pseudo,TreatmentName, sort = TRUE)
 DF.TreatmentList = collect(TreatmentList_Con)
+#test
