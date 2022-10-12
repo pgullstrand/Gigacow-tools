@@ -1,3 +1,4 @@
+from operator import index
 from pathlib import Path
 from statistics import mode
 import pandas as pd
@@ -19,21 +20,19 @@ data_x = cow_dataset.iloc[:, :12]
 data_y = cow_dataset.iloc[:, 12]
 
 # set up hyper-parameters
-learning_rate = 0.003
+learning_rate = 0.0005
 epoch = 200
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.autograd.set_detect_anomaly(True) 
 
 # split the dataset into train and test data
 X_train, X_test, y_train, y_test = train_test_split(data_x, data_y, test_size=0.2, random_state=50)
+test_dataset = pd.concat([X_test, y_test], axis=1)
+test_dataset.to_csv(dataDir/'cow_test_dataset.csv', index=False)
 X_train = X_train.to_numpy()
-X_test = X_test.to_numpy()
 y_train = y_train.to_numpy()
-y_test = y_test.to_numpy()
 train_data = dataset(X_train, y_train)
-test_data = dataset(X_test, y_test)
 train_loader = DataLoader(train_data, batch_size=64, shuffle=True)
-test_loader = DataLoader(test_data, batch_size=64, shuffle=True)
 
 # initiate model for training
 model = CowNet(input_size=X_train.shape[1])
@@ -42,6 +41,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 loss_fn = nn.BCEWithLogitsLoss()
 
 model.train()
+best_acc = 0.0
 for e in range(1, epoch+1):
     epoch_loss = 0
     epoch_acc = 0
@@ -59,7 +59,14 @@ for e in range(1, epoch+1):
         optimizer.step()
         epoch_loss += loss.item()
         epoch_acc += acc.item()
+    # save the best model parameter
+    cur_acc = epoch_acc/len(train_loader)
+    if cur_acc > best_acc:
+        best_acc = cur_acc
+        torch.save(model.state_dict(), 'best_model.pt')
     
         
     print(f'Epoch {e+0:03}: | Loss: {epoch_loss/len(train_loader):.5f} | Acc: {epoch_acc/len(train_loader):.3f}')
 
+print(f'\nBest Accuracy: {best_acc:.3f}')
+        
