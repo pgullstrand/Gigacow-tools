@@ -1,0 +1,75 @@
+#This script uses the Windows credentials of the user to log into the Gigacow test server to retrieve data.
+#In order to use this script you need to be running R as a registered Gigacow user on a computer capable of
+#accessing the Active Directory of SLU.
+
+#This script uses dbplyr to take dplyr commands, translate them to SQL and send them to the server.
+#This way the user can make selective downloads of data by compiling, filtering and joining tables
+#prior to downloading the datasets using the collect(function). Pretty much all dplyr commands can be used
+#to select, filter and manipulate data which is done in several of the Gigacow-tools scripts.
+#Running the script down to the odbcListObjects() function will open a connection to the Gigacow SQL database
+#and the "Connections" tab on the right (if you use Rstudio) should show you the databases accessible. You can
+#here see all tables available and also load the first 1000 rows of each one to quickly see the content.
+
+#install.packages("odbc")
+#install.packages("DBI")
+#install.packages("dplyr")
+#install.packages("dbplyr")
+
+
+library(odbc)
+library(DBI)
+library(dplyr)
+library(dbplyr)
+
+
+#Connecting to the database using the R user credentions.
+con <- dbConnect(odbc(),
+                 Driver = "SQL Server",
+                 Server = "gigacow_qa.db.slu.se",
+                 Database = "Gigacow_QA"
+)
+odbcListObjects(con)
+
+#Shows the available tables in the schema.
+odbcListObjects(con, catalog="Gigacow_QA", schema="scienceKokontrollen")
+
+ChipView_Con = con %>% tbl(in_catalog("Gigacow_QA", "scienceNAV", "Chip_View"))
+DF.ChipView= collect(ChipView_Con)
+
+GenotypeFileHeaderInfoView_Con = con %>% tbl(in_catalog("Gigacow_QA", "scienceNAV", "GenotypeFileHeaderInfo_View"))
+DF.GenotypeFileHeaderInfoView= collect(GenotypeFileHeaderInfoView_Con)
+
+GenotypeSNPView_Con = con %>% tbl(in_catalog("Gigacow_QA", "scienceNAV", "GenotypeSNP_View"))
+DF.GenotypeSNPView= collect(GenotypeSNPView_Con)
+
+HerdView_Con = con %>% tbl(in_catalog("Gigacow_QA", "scienceNAV", "Herd_View"))
+DF.HerdView= collect(HerdView_Con)
+
+ManifestView_Con = con %>% tbl(in_catalog("Gigacow_QA", "scienceNAV", "Manifest_View"))
+DF.ManifestView= collect(ManifestView_Con)
+
+
+#The below code chunks run SQL queries on each table and then downloads the result.
+AnimalView_Con = con %>% tbl(in_catalog("Gigacow_QA", "scienceNAV", "Animal_View")) %>%
+  filter(BirthID == "SE-540275a1-1045") #Add Farm names to only count a specific farm.
+DF.AnimalView = collect(AnimalView_Con)
+
+#The below code chunks run SQL queries on each table and then downloads the result.
+AnimalInPedigreeView_Con = con %>% tbl(in_catalog("Gigacow_QA", "scienceNAV", "AnimalInPedigree_View")) %>%
+  filter(BirthID == "SE-540275a1-1045") #Add Farm names to only count a specific farm.
+DF.AnimalPedigreeView= collect(AnimalInPedigreeView_Con)
+
+#The below code chunks run SQL queries on each table and then downloads the result.
+GenotypeDataView_Con = con %>% tbl(in_catalog("Gigacow_QA", "scienceNAV", "GenotypeData_View")) %>%
+  filter(BirthID == "SE-540275a1-1045") #Add Farm names to only count a specific farm.
+DF.GenotypeDataView= collect(GenotypeDataView_Con)
+
+#The below code chunks run SQL queries on each table and then downloads the result.
+Pedigree_ThreeGenerationsView_Con = con %>% tbl(in_catalog("Gigacow_QA", "scienceNAV", "Pedigree_ThreeGenerations_View")) %>%
+  filter(Calf_BirthID == "SE-540275a1-1045") #Add Farm names to only count a specific farm.
+DF.Pedigree_ThreeGenerationsView= collect(Pedigree_ThreeGenerationsView_Con)
+
+#The below code chunks run SQL queries on each table and then downloads the result.
+PedigreeView_Con = con %>% tbl(in_catalog("Gigacow_QA", "scienceNAV", "Pedigree_View")) %>%
+  filter(Calf_BirthID == "SE-540275a1-1045") #Add Farm names to only count a specific farm.
+DF.PedigreeView= collect(PedigreeView_Con)
