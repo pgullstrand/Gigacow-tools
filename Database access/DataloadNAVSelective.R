@@ -51,25 +51,25 @@ DF.ManifestView= collect(ManifestView_Con)
 
 #The below code chunks run SQL queries on each table and then downloads the result.
 AnimalView_Con = con %>% tbl(in_catalog("Gigacow_QA", "scienceNAV", "Animal_View")) %>%
-  filter(BirthID == "SE-540275a1-1045") #Add Farm names to only count a specific farm.
+  filter(BirthID == "SE-540275a1-1045") #Add Cow IDs to show multiple cows
 DF.AnimalView = collect(AnimalView_Con)
 
 #The below code chunks run SQL queries on each table and then downloads the result.
 AnimalInPedigreeView_Con = con %>% tbl(in_catalog("Gigacow_QA", "scienceNAV", "AnimalInPedigree_View")) %>%
-  filter(BirthID == "SE-540275a1-1045") #Add Farm names to only count a specific farm.
+  filter(BirthID == "SE-540275a1-1045") #Add Cow IDs to show multiple cows
 DF.AnimalPedigreeView= collect(AnimalInPedigreeView_Con)
 
 #The below code chunks run SQL queries on each table and then downloads the result.
 GenotypeDataView_Con = con %>% tbl(in_catalog("Gigacow_QA", "scienceNAV", "GenotypeData_View")) %>%
-  filter(BirthID == "SE-540275a1-1045") #Add Farm names to only count a specific farm.
+  filter(BirthID == "SE-540275a1-1045") #Add Cow IDs to show multiple cows.
 DF.GenotypeDataView= collect(GenotypeDataView_Con)
 
 #The below code chunks run SQL queries on each table and then downloads the result.
 Pedigree_ThreeGenerationsView_Con = con %>% tbl(in_catalog("Gigacow_QA", "scienceNAV", "Pedigree_ThreeGenerations_View")) %>%
-  filter(Calf_BirthID == "SE-540275a1-1045") #Add Farm names to only count a specific farm.
+  filter(Calf_BirthID == "SE-540275a1-1045") #Add Cow IDs to show multiple cows.
 DF.Pedigree_ThreeGenerationsView= collect(Pedigree_ThreeGenerationsView_Con)
 
 #The below code chunks run SQL queries on each table and then downloads the result.
 PedigreeView_Con = con %>% tbl(in_catalog("Gigacow_QA", "scienceNAV", "Pedigree_View")) %>%
-  filter(Calf_BirthID == "SE-540275a1-1045") #Add Farm names to only count a specific farm.
+  filter(Calf_BirthID == "SE-540275a1-1045") #Add Cow IDs to show multiple cows
 DF.PedigreeView= collect(PedigreeView_Con)
