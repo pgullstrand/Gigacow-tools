@@ -15,10 +15,12 @@
 #install.packages("dplyr")
 #install.packages("dbplyr")
 
+
 library(odbc)
 library(DBI)
 library(dplyr)
 library(dbplyr)
+
 
 #Connecting to the database using the R user credentions.
 con <- dbConnect(odbc(),
@@ -28,13 +30,10 @@ con <- dbConnect(odbc(),
 )
 odbcListObjects(con)
 
-DiagnosisList_Con = con %>% tbl(in_catalog("Gigacow_QA", "science", "Health_DiagnosisTreatment_DataView")) %>%
-  group_by(FarmName_Pseudo, DiagnosisName) %>%
-  count(FarmName_Pseudo,DiagnosisName, sort = TRUE)
-DF.DiagnosisList = collect(DiagnosisList_Con)
+#Shows the available tables in the schema.
+odbcListObjects(con, catalog="Gigacow_QA", schema="science")
 
 
-TreatmentList_Con = con %>% tbl(in_catalog("Gigacow_QA", "science", "Health_DiagnosisTreatment_DataView")) %>%
-  group_by(FarmName_Pseudo, DiagnosisName) %>%
-  count(FarmName_Pseudo,TreatmentName, sort = TRUE)
-DF.TreatmentList = collect(TreatmentList_Con)
+Gigacow_Cow_DataView_Con = con %>% tbl(in_catalog("Gigacow_QA", "science", "Gigacow_Cow_DataView")) %>%
+  select(c(FarmName_Pseudo, AnimalNumber,SE_Number, BirthDate, BreedName))
+DF.Gigacow_Cowlist = collect(Gigacow_Cow_DataView_Con)
