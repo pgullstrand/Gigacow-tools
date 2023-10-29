@@ -6,6 +6,9 @@ library(dplyr)
 #You may need to turn PreviousArea into a factor (ie use as.factor on the column)
 #for this script to work depending on how R interprets the row.
 
+#The Script relies on having a Data Frame named DF.Traffic generated from the Gigacow Cow Traffic data.
+#Scripts like DataloadGigacow.R and DataLoadDelProSelective.R in Generall access script provide examples to generate such a table.
+
 #This pipe removes all Traffic events which are not related to a cow entering the
 #milking robot.
 DF.trafficMilkings = DF.Traffic %>% 

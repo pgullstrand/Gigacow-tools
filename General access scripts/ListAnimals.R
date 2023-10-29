@@ -25,7 +25,7 @@ library(dbplyr)
 #Connecting to the database using the R user credentions.
 con <- dbConnect(odbc(),
                  Driver = "SQL Server",
-                 Server = "sqldbtest2-1.ad.slu.se\\inst1",
+                 Server = "gigacow_qa.db.slu.se",
                  Database = "Gigacow_QA"
 )
 odbcListObjects(con)

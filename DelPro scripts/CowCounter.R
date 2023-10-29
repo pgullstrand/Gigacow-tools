@@ -17,6 +17,8 @@ library(dplyr)
 # Using the The SE_Number in group_by separates animals by which farm they were 
 # born on as the SE_Number includes the farm ID of where they were born.
 
+#The Script relies on having a Data Frame named DF.Cow available with the columns FarmName_Pseudo and SE_Number.
+#Scripts like DataloadGigacow.R and DataLoadDelProSelective.R in Generall access script provide examples to generate such a table.
 
 DF.CowCount = DF.Cow %>% 
 #  filter(FarmName_Pseudo == "" | FarmName_Pseudo == "") %>% #Add Farm names to only count a specific farm.
