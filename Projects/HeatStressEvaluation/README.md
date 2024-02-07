@@ -94,12 +94,12 @@ Follow one of the installation guides for conda
 
 Python version used by the authors is `3.10.13`.
 
-Then to get the proper enviroment:
+Then to get the proper environment:
 ```bash
 # Conda env installation command
-conda create --name your_enviroment_name --file requirements.txt
+conda create --name your_environment_name --file requirements.txt
 ```
-If the creation of the enviroment doesn't work for some reason, the most important libraries are:
+If the creation of the environment doesn't work for some reason, the most important libraries are:
 - `Numpy`
 - `requests`
 - `scikit-learn`
@@ -118,14 +118,16 @@ If the creation of the enviroment doesn't work for some reason, the most importa
 
 Some datasets are necessary and should be placed in the "Data" folder according to the structure provided above. Ensure the availability of the following datasets and their correct placement:
 
-- `Cow.csv`
-- `DiagnosisTreatment.csv`
-- `Lactation.csv`
-- `MilkYield.csv`
-- `Robot_filtered.csv`
-- `Coordinates.csv`
-- The MESAN files from SMHI
+- The Gigacow data from SLU in the `Data/CowData/RawGIGACOW/` directory
+    - `Cow.csv`
+    - `DiagnosisTreatment.csv`
+    - `Lactation.csv`
+    - `MilkYield.csv`
+    - `Robot.csv`
+- The MESAN data from SMHI in the `Data/WeatherData/RawMESAN/` directory
     - `XXXX_2022-2023.csv`
+- The coordinate file in the `Data/WeatherData/Coordinates/` directory 
+    - `Coordinates.csv`
 ### 2. Preproccess the data
 Run the two cells in `DataPreprocessing/DataPreprocessing.ipynb`.
 
