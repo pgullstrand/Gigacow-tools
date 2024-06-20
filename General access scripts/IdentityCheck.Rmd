@@ -1,0 +1,309 @@
+---
+title: "Gigacow-IdentityCheck"
+author: "Tomas Klingström"
+date: "`r Sys.Date()`"
+output:
+  html_document: 
+    code folding: hide
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#install.packages("odbc")
+#install.packages("DBI")
+#install.packages("dplyr")
+#install.packages("dbplyr")
+#install.packages("janitor")
+#install.packages("ggplot2")
+#install.packages("lubridate")
+#install.packages("readr")
+#install.packages("gridExtra")
+#install.packages("VennDiagram")
+#install.packages("knitr")
+#install.packages("tidyr")
+
+
+library(odbc)
+library(DBI)
+library(dplyr)
+library(dbplyr)
+suppressMessages(library(janitor))
+library(ggplot2)
+library(lubridate)
+library(readr)
+library(gridExtra)
+library(VennDiagram)
+library(knitr)
+library(tidyr)
+
+```
+
+## R Markdown
+
+This is an automated report on Cow identities and the integrity of data in SLU Gigacow.
+```{r DataDownloads, echo=FALSE, eval= TRUE}
+#This chunk is disabled in the script, change it to TRUE to download the data the data the first time you run the notebook or when using #Knit.
+con <- dbConnect(odbc(), 
+                 Driver = "/opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.3.so.2.1", 
+                 Server = "gigacow.db.slu.se", 
+                 Database = "gigacow", 
+                 UID = "gig_kok", 
+                 PWD = rstudioapi::askForPassword("Enter your password"),
+                 TrustServerCertificate = "yes")
+
+Kok_Cow_Con = con %>% tbl(in_catalog("gigacow", "sciKok", "Kok_Cow"))
+DF.Kok_Cow = collect(Kok_Cow_Con)
+
+con <- dbConnect(odbc(), 
+                 Driver = "/opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.3.so.2.1", 
+                 Server = "gigacow.db.slu.se", 
+                 Database = "gigacow", 
+                 UID = "gig_nav", 
+                 PWD = rstudioapi::askForPassword("Enter your password"),
+                 TrustServerCertificate = "yes")
+
+Del_Nav_Con = con %>% tbl(in_catalog("gigacow", "sciNav", "Nav_Cow"))
+DF.Nav_Cow = collect(Del_Nav_Con)
+
+#Below lines are edited out because the workload on the server to perform this crashes everything
+#Del_Nav_Genotyped_Con = con %>% tbl(in_catalog("gigacow", "sciNav", "Nav_GenotypeData")) %>%
+#    distinct(BirthID, .keep_all = TRUE)
+#DF.Nav_Cow_Genotyped = collect(Del_Nav_Genotyped_Con)
+
+con <- dbConnect(odbc(), 
+                 Driver = "/opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.3.so.2.1", 
+                 Server = "gigacow.db.slu.se", 
+                 Database = "gigacow", 
+                 UID = "gig_del", 
+                 PWD = rstudioapi::askForPassword("Enter your password"),
+                 TrustServerCertificate = "yes")
+
+Del_Cow_Con = con %>% tbl(in_catalog("gigacow", "sciDel", "Del_Cow"))
+DF.Del_Cow = collect(Del_Cow_Con)
+
+Del_Cow_Milked_Con = con %>% tbl(in_catalog("gigacow", "sciDel", "Del_CowMilkYield_Common")) %>%
+  distinct(SE_Number, .keep_all = TRUE)
+DF.Del_Cow_Milked = collect(Del_Cow_Milked_Con)
+
+```
+The below charts display the year of birth for cows on the same farm having the same SE-number. In Swedish livestock farming unique IDs are created by combining the official Herd ID (a pseudonym of this is stored as FarmName_Pseudo in Gigacow data), a four digit code and the birth year of the cow. The four digit code is the ear tag number of a cow assigned at birth and a code may not be reused within 3 years after a cow leaves the farm. In formal records the four digit code is followed by a dash and a control number generated from the four digit code to ensure it has been properly entered into systems, this is omitted in Gigacow because of the control number not being entered in the DelPro herd management system on many farms.
+
+The below plots show the cases and time between occurances for SE-numbers being repeated in Gigacow herds. Overall the combination of FarmName_Pseudo, SE_Number and Birth year provide unique identification of animals in Gigacow.
+
+```{r Testing NAV and Kokontrollen for duplicates, echo=FALSE, results= 'hide'}
+
+Kok_SameID <- DF.Kok_Cow %>% get_dupes(BirthID)
+dup_Kok <- DF.Kok_Cow %>% get_dupes(BirthID, BirthYear)
+
+Nav_SameID <- DF.Nav_Cow %>% get_dupes(BirthID)
+dup_Nav <- DF.Nav_Cow %>% get_dupes(BirthID, BirthDate)
+
+Del_SameID <- DF.Del_Cow %>% 
+  filter(!is.na(SE_Number)) %>%
+  get_dupes(FarmName_Pseudo, SE_Number)
+dup_Del <- DF.Del_Cow %>% 
+  filter(!is.na(SE_Number)) %>%
+  get_dupes(FarmName_Pseudo, SE_Number, BirthDate)
+
+Kok_SameID_rowwise <- Kok_SameID %>%
+  group_by(BirthID) %>%
+  summarise(Earliest_BirthYear = min(BirthYear),
+            Second_BirthYear = max(BirthYear)) %>%
+  mutate(Difference = Second_BirthYear - Earliest_BirthYear)
+
+Nav_SameID_rowwise <- Nav_SameID %>%
+  group_by(BirthID) %>%
+  summarise(Earliest_BirthYear = min(BirthYear),
+            Second_BirthYear = max(BirthYear)) %>%
+  mutate(Difference = Second_BirthYear - Earliest_BirthYear)
+
+min_birth_year <- min(c(min(Kok_SameID_rowwise$Earliest_BirthYear), min(Nav_SameID_rowwise$Earliest_BirthYear)))
+max_birth_year <- max(c(max(Kok_SameID_rowwise$Second_BirthYear), max(Nav_SameID_rowwise$Second_BirthYear)))
+
+# Plotting scatter plot
+Kok_SameID_plot <- ggplot(Kok_SameID_rowwise, aes(x = Earliest_BirthYear, y = Second_BirthYear, color = Difference)) +
+  geom_point() +
+  scale_color_gradient(name = "Difference", low = "blue", high = "red") +
+  labs(x = "Earliest Birth Year", y = "Second Birth Year", title = "Scatter Plot of Birth Years Kokontrollen") +
+  xlim(min_birth_year, max_birth_year) + ylim(min_birth_year, max_birth_year) +
+  coord_equal()
+
+
+# Plotting scatter plot
+Nav_SameID_plot <- ggplot(Nav_SameID_rowwise, aes(x = Earliest_BirthYear, y = Second_BirthYear, color = Difference)) +
+  geom_point() +
+  scale_color_gradient(name = "Difference", low = "blue", high = "red") +
+  labs(x = "Earliest Birth Year", y = "Second Birth Year", title = "Scatter Plot of Birth Years Nav") +
+  xlim(min_birth_year, max_birth_year) + ylim(min_birth_year, max_birth_year) +
+  coord_equal()
+
+grid.arrange(Kok_SameID_plot, Nav_SameID_plot, ncol = 2)
+
+
+dup_Del_Cows <- Del_SameID %>%
+  group_by(SE_Number) %>%
+  filter(n_distinct(BirthDate) > 1) %>%
+  unique() %>%
+  select(1:11)
+
+```
+<br>
+- Kokontrollen contain `r length(unique(Kok_SameID_rowwise$BirthID))` SE-numbers being reused out of which `r length(unique(dup_Kok$BirthID))` are duplicates within an illegal time frame.\
+- Nav contain `r length(unique(Nav_SameID_rowwise$BirthID))` SE-numbers being reused out of which `r length(unique(dup_Nav$BirthID))` are duplicates within an illegal time frame.\
+- DelPro data has proven more problematic with erroneous entries and alternative ID numbers (Animal Numbers) making it difficult to uniquely identify Cows. There are currently `r length(unique(dup_Del$SE_Number))` cows with "split" identities due to being entered with two separate Animal numbers in their DelPro herd management system. Erroneous entries where two cows (separated by birth date) are assigned the same SE-number are also possible. Currently The SE-number(s) `r unique(dup_Del_Cows$SE_Number)` are affected by this and the entries in the DelPro Cow table displayed below\
+<br>
+```{r Showing problematic cows in DelPro, echo=FALSE, results= 'asis'}
+kable(dup_Del_Cows)
+```
+<br>
+The Cows collected in SLU Gigacow can be divided into four categories where each cow participate in one or more categories:\
+- Cows with data collected in the DelPro Herd management system.\
+- Cows with data collected in the DelPro Herd management system and milked during the time Gigacow has been collecting data.\
+- Cows with data collected from Kokontrollen.\
+- Cows with data collected from NAV.\
+<br>
+
+There is not a complete overlap between these datasets. Some calves born on Gigacow farms will never be recruited into dairy production on a Gigacow farms and all three data sources contain old records. A current priority is to ensure that as many currently milked cows as possible are accompanied not only with DelPro data but also Kokontrollen and Nav. 
+```{r Dataset overlapsDelPro duplicates, echo=FALSE, results = 'asis'}
+
+# Select rows from DF.Del_Cow where SE_Number exists in DF.Del_Cow_Milked
+Del_Cow_MilkedListBirthDate <- DF.Del_Cow %>%
+  semi_join(DF.Del_Cow_Milked, by = c("SE_Number","FarmName_Pseudo")) %>%
+  filter(!is.na(BirthDate))
+
+#Testing why the DF.Del_Cow_Milked dataframe contain one row more.
+Del_Cow_MilkedMissing <- DF.Del_Cow_Milked %>%
+  anti_join(Del_Cow_MilkedListBirthDate, by = "SE_Number")
+
+#The below code generates a Venn Diagram showing overlap between the datasets.
+
+# Extract SE_Numbers/BirthIDs from each dataframe
+Del_SE_Number <- na.omit(unique(DF.Del_Cow$SE_Number))
+Del_Milked_SE_Number <- na.omit(unique(Del_Cow_MilkedListBirthDate$SE_Number))
+Kok_BirthID <- na.omit(unique(DF.Kok_Cow$BirthID))
+Nav_BirthID <- na.omit(unique(DF.Nav_Cow$BirthID))
+
+# Create a list of sets
+venn_list_milked <- list(
+  "Del_Milked_Cows" = Del_Milked_SE_Number,
+  "Kok_Cow" = Kok_BirthID,
+  "Nav_Cow" = Nav_BirthID
+)
+
+
+# Plot the Venn diagram
+venn.plot_milked <- venn.diagram(
+  venn_list_milked,
+  category.names = c("Del_Milked_Cows", "Kok_Cow", "Nav_Cow"),
+  filename = NULL
+)
+
+grid.draw(venn.plot_milked)
+
+```
+<br>
+```{r DelPro Venn plot all data, echo=FALSE, results ='asis'}
+# Create a list of sets
+venn_list_cows <- list(
+  "Del_Cow_All" = Del_SE_Number,
+  "Kok_Cow" = Kok_BirthID,
+  "Nav_Cow" = Nav_BirthID
+)
+
+# Plot the Venn diagram
+venn.plot_cows <- venn.diagram(
+  venn_list_cows,
+  category.names = c("Del_Cow_All", "Kok_Cow", "Nav_Cow"),
+  filename = NULL
+)
+
+
+grid.draw(venn.plot_cows)
+```
+<br>
+Looking in detail at the data available on a per farm level it is clear that some farms are lacking coverage from Kokontrollen and Nav.
+<br>
+```{r DelPro Cows with data in Kokontrollen and NAV, echo=FALSE, results= 'hide'}
+
+# Select rows from DF.Del_Cow where SE_Number exists DF.Kok_Cow and count occurances
+Del_Cow_Kok <- DF.Del_Cow %>%
+  semi_join(DF.Kok_Cow, by = c("SE_Number"= "BirthID")) %>%
+  group_by(FarmName_Pseudo) %>%
+  summarise(In_Kok = n())
+
+# Calculate how many SE Numbers/BirthIDs in DF.Del_Cow not in DF.Kok_Cow
+Del_Cow_notKok <- DF.Del_Cow %>%
+  anti_join(DF.Kok_Cow, by = c("SE_Number" = "BirthID")) %>%
+  group_by(FarmName_Pseudo) %>%
+  summarise(Not_in_Kok = n())
+
+Cow_DelKok <- Del_Cow_Kok %>%
+  full_join(Del_Cow_notKok, by = "FarmName_Pseudo") 
+
+# Select rows from DF.Del_Cow where SE_Number exists in DF.Nav_Cow and count occurances
+Del_Cow_Nav <- DF.Del_Cow %>%
+  semi_join(DF.Nav_Cow, by = c("SE_Number"= "BirthID")) %>%
+  group_by(FarmName_Pseudo) %>%
+  summarise(In_Nav = n())
+
+# Calculate how many SE Numbers/BirthIDs in DF.Del_Cow not in DF.Kok_Cow
+Del_Cow_notNav <- DF.Del_Cow %>%
+  anti_join(DF.Nav_Cow, by = c("SE_Number" = "BirthID")) %>%
+  group_by(FarmName_Pseudo) %>%
+  summarise(Not_in_Nav = n())
+
+Cow_DelNav <- Del_Cow_Nav %>%
+  full_join(Del_Cow_notNav, by = "FarmName_Pseudo") 
+
+
+#Full table
+Cow_DelKokNav <- Cow_DelKok %>%
+  full_join(Cow_DelNav, by = "FarmName_Pseudo") 
+
+```
+```{r DelPro Cows with milkings in Kokontrollen and NAV, echo=FALSE, results= 'hide'}
+
+# Select rows from DF.Del_Cow where SE_Number exists DF.Kok_Cow and count occurances
+Del_CowMilked_Kok <- DF.Del_Cow_Milked %>%
+  semi_join(DF.Kok_Cow, by = c("SE_Number"= "BirthID")) %>%
+  group_by(FarmName_Pseudo) %>%
+  summarise(In_Kok = n())
+
+# Calculate how many SE Numbers/BirthIDs in DF.Del_Cow not in DF.Kok_Cow
+Del_CowMilked_notKok <- DF.Del_Cow_Milked %>%
+  anti_join(DF.Kok_Cow, by = c("SE_Number" = "BirthID")) %>%
+  group_by(FarmName_Pseudo) %>%
+  summarise(Non_in_Kok = n())
+
+Cow_DelKok_Milked <- Del_CowMilked_Kok %>%
+  full_join(Del_CowMilked_notKok, by = "FarmName_Pseudo") 
+
+# Select rows from DF.Del_Cow where SE_Number exists in DF.Nav_Cow and count occurances
+Del_CowMilked_Nav <- DF.Del_Cow_Milked %>%
+  semi_join(DF.Nav_Cow, by = c("SE_Number"= "BirthID")) %>%
+  group_by(FarmName_Pseudo) %>%
+  summarise(In_Nav = n())
+
+# Calculate how many SE Numbers/BirthIDs in DF.Del_Cow not in DF.Kok_Cow
+Del_CowMilked_notNav <- DF.Del_Cow_Milked %>%
+  anti_join(DF.Nav_Cow, by = c("SE_Number" = "BirthID")) %>%
+  group_by(FarmName_Pseudo) %>%
+  summarise(Not_in_Nav = n())
+
+Cow_DelNav_Milked <- Del_CowMilked_Nav %>%
+  full_join(Del_CowMilked_notNav, by = "FarmName_Pseudo") 
+
+
+#Full table
+Cow_DelKokNav_Milked <- Cow_DelKok_Milked %>%
+  full_join(Cow_DelNav_Milked, by = "FarmName_Pseudo") 
+```
+
+```{r Show cows with data missing  problematic cows in DelPro, echo=FALSE, results= 'asis'}
+kable(Cow_DelKokNav, caption = "Table displaying how many Cows from DelPro Cow table that exist in Kokontrollen and Nav")
+
+kable(Cow_DelKokNav_Milked, caption = "Table displaying how many milked Cows from DelPro Cow table that exist in Kokontrollen and Nav")
+```
